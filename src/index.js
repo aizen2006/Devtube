@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import connectDB from "./db/index.js";
+import { app } from './app.js';
 
 connectDB()
 .then(() => {
@@ -16,7 +17,7 @@ connectDB()
 })
 
 
-/*
+/* another method
 import express from "express";
 const app = express();
 
