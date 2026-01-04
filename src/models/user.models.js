@@ -43,23 +43,22 @@ const userSchema = new mongoose.Schema({
         type:String, // cloudinary url
         required:true,
     },
-    refereshToken:{
+    refreshToken:{
         type:String,
     }
 },{timestamps:true})
 
 
-userSchema.pre("save", async function(next) {
-    if(!this.isModified("password")) return next();
+userSchema.pre("save", async function () {
+    if(!this.isModified("password")) return;
 
-    this.password = await bcrypt.hash(this.password ,10) 
-    next()
+    this.password = await bcrypt.hash(this.password, 10);
 })
 
-userSchema.methods.isPasswordCorrect = async function(password){
+userSchema.methods.isPasswordCorrect = async function passwordCorrect(password){
     return await bcrypt.compare(password , this.password)
 }
-userSchema.methods.generateAccessToken = function(){
+userSchema.methods.generateAccessToken = function generateAccessToken(){
     return jwt.sign(
         {
             _id:this._id,
@@ -73,14 +72,14 @@ userSchema.methods.generateAccessToken = function(){
         }
     )
 }
-userSchema.methods.generateRefreshToken = function(){
+userSchema.methods.generateRefreshToken = function generateRefreshToken(){
     return jwt.sign(
         {
             _id:this._id,
         },
         process.env.REFRESH_TOKEN_SECRET,
         {
-            expiresIn: process.env.REFRESH_TOKEN_SECRET
+            expiresIn: process.env.REFRESH_TOKEN_EXPIRY
         }
     )
 }
