@@ -70,5 +70,47 @@ const deleteFromCloudnary = async(oldFileUrl)=>{
         throw new ApiError(500,"failed to Remove Asset from cloudinary",error)
     }
 }
+const uploadVideoToCloudinary = async(videoFilelocalPath) => {
+    if(!videoFilelocalPath){
+        throw new ApiError(400,"failed to fetch video file from local path")
+    }
+    if (!fs.existsSync(videoFilelocalPath)) {
+        throw new ApiError(400,"File does not exist at path:", videoFilelocalPath);
+    }
+    try {
+        const video = await cloudinary.uploader.upload_large(videoFilelocalPath, {
+            resource_type:"video",
+        });
+        console.log("video is uploaded on cloudinary", video.url);
+        return video;
+    } catch (error) {
+        throw new ApiError(500,"failed to upload video to cloudinary",error)
+    } finally {
+        fs.unlinkSync(videoFilelocalPath);
+    }
+}
+const deleteVideoFromCloudinary = async(videoUrl)=>{
+    if(!videoUrl){
+        throw new ApiError(400,"failed to fetch video url from DB")
+    }
+    try {
+        if (!videoUrl.includes("/upload/")) {
+            throw new Error("Invalid Cloudinary URL");
+        }
+        const publicId = videoUrl
+            .split("/upload/")[1]
+            .replace(/\.[^/.]+$/, ""); // remove extension safely
+        const result = await cloudinary.uploader.destroy(publicId);
+        console.log("video is deleted from cloudinary", result);
+        return result;
+    } catch (error) {
+        throw new ApiError(500,"failed to delete video from cloudinary",error)
+    }
+}
 
-export {uploadOnCloudinary , deleteFromCloudnary};
+export {
+    uploadOnCloudinary , 
+    deleteFromCloudnary, 
+    uploadVideoToCloudinary, 
+    deleteVideoFromCloudinary
+};
