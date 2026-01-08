@@ -1,6 +1,7 @@
 import { v2 as cloudinary } from 'cloudinary';
 import fs from "fs";
 import 'dotenv/config';
+import { ApiError } from './apiError';
 
 
 // configure cloudinary
@@ -49,5 +50,25 @@ const uploadOnCloudinary = async(localfilepath) => {
         return null;
     }
 }
+const deleteFromCloudnary = async(oldFileUrl)=>{
+    if(!oldFileUrl){
+        throw new ApiError(400,"Error while fetching file url from DB")
+    }
+    try {
+        if (!oldFileUrl.includes("/upload/")) {
+            throw new Error("Invalid Cloudinary URL");
+        }
+        const publicId = oldFileUrl
+            .split("/upload/")[1]
+            .replace(/\.[^/.]+$/, ""); // remove extension safely
+        
+        const result = await cloudinary.uploader.destroy(publicId);
+        console.log("Asset removed from cloudinary successfully", result);
+        return result;
 
-export {uploadOnCloudinary};
+    } catch (error) {
+        throw new ApiError(500,"failed to Remove Asset from cloudinary",error)
+    }
+}
+
+export {uploadOnCloudinary , deleteFromCloudnary};

@@ -1,7 +1,7 @@
 import asyncHandler from '../utils/asyncHandler.js'
 import { ApiError } from "../utils/apiError.js"
 import { User } from "../models/user.models.js"
-import { uploadOnCloudinary } from "../utils/fileUpload.js"
+import { uploadOnCloudinary ,deleteFromCloudnary } from "../utils/fileUpload.js"
 import { ApiResponse } from '../utils/ApiResponse.js'
 import jwt from 'jsonwebtoken'
 import { mongoose } from 'mongoose' 
@@ -249,46 +249,73 @@ const updateAccountDetails = asyncHandler (async(req,res) => {
     )
 })
 
-const updateUserAvatar = asyncHandler (async (req,res) => {
-    const avatarLocalPath = req.file?.path
+const updateUserAvatar = asyncHandler(async (req, res) => {
+    const avatarLocalPath = req.file?.path;
 
     if (!avatarLocalPath) {
-        throw new ApiError (400 , "Avatar file is required")
+        throw new ApiError(400, "Avatar file is required");
     }
-    const avatar = await uploadOnCloudinary(avatarLocalPath)
-    if (!avatar.url) {
-        throw new ApiError (500 , "Error uploading avatar image")
+
+    // Upload new avatar
+    const avatar = await uploadOnCloudinary(avatarLocalPath);
+    if (!avatar?.url) {
+        throw new ApiError(500, "Error uploading avatar image");
     }
+
+    // Get old avatar URL
+    const user = await User.findById(req.user._id).select("avatar");
+
+    // Update DB first
     const updatedUser = await User.findByIdAndUpdate(
         req.user._id,
         { $set: { avatar: avatar.url } },
-        { new: true }
-    ).select("-password -refreshToken")
+        { new: true, runValidators: true }
+    ).select("-password -refreshToken");
 
-    return res.status(200 ).json(
-        new ApiResponse(200 ,updatedUser,"User's avatar updated successfully")
-    )
-})
+    // Delete old avatar (non-blocking)
+    if (user?.avatar) {
+        deleteFromCloudnary(user.avatar)
+            .then(res => console.log("Old avatar deleted:", res))
+            .catch(err => console.error("Old avatar delete failed:", err.message));
+    }
 
-const updateCoverImage = asyncHandler(async(req,res) =>{
-    const coverImageLocalPath = req.file?.path
-    if(!coverImageLocalPath){
-        throw new ApiError(400 ,'CoverImage file is required')
+    return res.status(200).json(
+        new ApiResponse(200, updatedUser, "User avatar updated successfully")
+    );
+});
+
+
+const updateCoverImage = asyncHandler(async (req, res) => {
+    const coverImageLocalPath = req.file?.path;
+
+    if (!coverImageLocalPath) {
+        throw new ApiError(400, "Cover image file is required");
     }
-    const coverImage =await uploadOnCloudinary(coverImageLocalPath)
-    if(!coverImage){
-        throw new ApiError(500 , "Error while Uploading coverImage")
+
+    const coverImage = await uploadOnCloudinary(coverImageLocalPath);
+    if (!coverImage?.url) {
+        throw new ApiError(500, "Error uploading cover image");
     }
-    const updatedUser = await User.findOneAndUpdate(
+
+    const user = await User.findById(req.user._id).select("coverImage");
+
+    const updatedUser = await User.findByIdAndUpdate(
         req.user._id,
-        {$set:{coverImage: coverImage.url}},
-        {new:true}
-    ).select("-password -refreshToken")
+        { $set: { coverImage: coverImage.url } },
+        { new: true, runValidators: true }
+    ).select("-password -refreshToken");
 
-    return res.status(200 ).json(
-        new ApiResponse(200 ,updatedUser,"User's coverImage updated successfully")
-    )
-})
+    if (user?.coverImage) {
+        deleteFromCloudnary(user.coverImage)
+            .then(res => console.log("Old cover image deleted:", res))
+            .catch(err => console.error("Old cover image delete failed:", err.message));
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200, updatedUser, "User cover image updated successfully")
+    );
+});
+
 
 const getUserChannelProfile = asyncHandler(async(req,res)=>{
     const { username } = req.params;
